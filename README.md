@@ -31,8 +31,17 @@ pip install -r requirements.txt
 
 ## Running
 
+Make sure the virtual environment is active before running:
+
 ```bash
+source .venv/bin/activate       # Windows: .venv\Scripts\activate
 python main.py
+```
+
+Alternatively, run directly via the venv Python without activating:
+
+```bash
+.venv/bin/python main.py        # Windows: .venv\Scripts\python main.py
 ```
 
 ## Usage

@@ -128,6 +128,8 @@ class App(ctk.CTk):
         self.editor = EditorPanel(
             content,
             on_string_changed=self._on_string_changed,
+            on_add_key=self._on_key_added_inline,
+            on_delete_key=self._on_key_deleted,
         )
         self.editor.grid(row=0, column=1, sticky="nsew")
 
@@ -279,6 +281,48 @@ class App(ctk.CTk):
         # Refresh editor if the new key belongs to the current group
         if self.current_group is not None and new_str.group == self.current_group:
             group_strings = [s for s in strings if s.group == self.current_group]
+            self.editor.show_group(
+                group_strings, self.current_project.languages, self.current_group,
+            )
+
+    def _on_key_added_inline(self, key: str, translations: dict[str, str]) -> str | None:
+        """Called from the inline add row. Returns an error string or None on success."""
+        if not self.current_project:
+            return "No project selected."
+        strings = self._all_strings.setdefault(self.current_project.name, [])
+        if any(s.key == key for s in strings):
+            return f'Key "{key}" already exists.'
+        new_str = LocaleString(key=key, translations=translations)
+        strings.append(new_str)
+        strings.sort(key=lambda s: s.key)
+
+        self._dirty = True
+        self.toolbar.set_dirty(True)
+        self._refresh_sidebar()
+
+        if self.current_group is not None and new_str.group == self.current_group:
+            group_strings = [s for s in strings if s.group == self.current_group]
+            self.editor.show_group(
+                group_strings, self.current_project.languages, self.current_group,
+            )
+        return None
+
+    def _on_key_deleted(self, string: LocaleString) -> None:
+        """Remove a key from all locale files (in-memory + marks dirty)."""
+        if not self.current_project:
+            return
+        strings = self._all_strings.get(self.current_project.name, [])
+        self._all_strings[self.current_project.name] = [
+            s for s in strings if s.key != string.key
+        ]
+
+        self._dirty = True
+        self.toolbar.set_dirty(True)
+        self._refresh_sidebar()
+
+        if self.current_group is not None:
+            updated = self._all_strings[self.current_project.name]
+            group_strings = [s for s in updated if s.group == self.current_group]
             self.editor.show_group(
                 group_strings, self.current_project.languages, self.current_group,
             )
