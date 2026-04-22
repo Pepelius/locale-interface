@@ -24,7 +24,14 @@ def load_projects() -> list[Project]:
                 )
                 for lf in p.get("locale_files", [])
             ]
-            projects.append(Project(name=p["name"], path=Path(p["path"]), locale_files=files))
+            lp = p.get("locales_path")
+            projects.append(Project(
+                name=p["name"],
+                path=Path(p["path"]),
+                locale_files=files,
+                locales_path=Path(lp) if lp else None,
+                default_language=p.get("default_language", ""),
+            ))
         return projects
     except Exception:
         return []
@@ -37,6 +44,8 @@ def save_projects(projects: list[Project]) -> None:
             {
                 "name": p.name,
                 "path": str(p.path),
+                "locales_path": str(p.locales_path) if p.locales_path else None,
+                "default_language": p.default_language,
                 "locale_files": [
                     {"language": lf.language, "path": str(lf.path), "format": lf.format}
                     for lf in p.locale_files

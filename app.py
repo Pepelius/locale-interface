@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import customtkinter as ctk
 
 from models.locale_string import LocaleString
@@ -8,10 +10,12 @@ from parsers.base import BaseParser
 from parsers.json_parser import JsonParser
 from parsers.po_parser import PoParser
 from parsers.properties_parser import PropertiesParser
+from parsers.ts_parser import TypeScriptParser
 from parsers.yaml_parser import YamlParser
 from services.project_store import load_projects, save_projects
 from ui.dialogs.add_group import AddGroupDialog
 from ui.dialogs.add_key import AddKeyDialog
+from ui.dialogs.add_locale import AddLocaleDialog
 from ui.dialogs.connect_project import ConnectProjectDialog
 from ui.editor_panel import EditorPanel
 from ui.sidebar import Sidebar
@@ -22,6 +26,7 @@ _PARSERS: dict[str, BaseParser] = {
     "yaml": YamlParser(),
     "properties": PropertiesParser(),
     "po": PoParser(),
+    "ts": TypeScriptParser(),
 }
 
 
@@ -89,7 +94,7 @@ class App(ctk.CTk):
     # ── Layout ─────────────────────────────────────────────────────────────
 
     def _build_ui(self) -> None:
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
         self.toolbar = Toolbar(
@@ -102,8 +107,12 @@ class App(ctk.CTk):
         )
         self.toolbar.grid(row=0, column=0, sticky="ew")
 
+        # Thin separator below toolbar
+        ctk.CTkFrame(self, height=1, corner_radius=0,
+                     fg_color=("gray80", "gray25")).grid(row=1, column=0, sticky="ew")
+
         content = ctk.CTkFrame(self, fg_color="transparent")
-        content.grid(row=1, column=0, sticky="nsew", padx=8, pady=8)
+        content.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
         content.grid_rowconfigure(0, weight=1)
         content.grid_columnconfigure(1, weight=1)
 
@@ -111,6 +120,7 @@ class App(ctk.CTk):
             content,
             on_group_selected=self._on_group_selected,
             on_project_removed=self._on_project_removed,
+            on_add_locale=self._open_add_locale_dialog,
             width=264,
         )
         self.sidebar.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
@@ -129,7 +139,7 @@ class App(ctk.CTk):
             for p in self.projects
         ]
         self.sidebar.set_data(data)
-        if self.current_project and self.current_group:
+        if self.current_project and self.current_group is not None:
             self.sidebar.set_selected(self.current_project.name, self.current_group)
 
     # ── Event handlers ─────────────────────────────────────────────────────
@@ -197,6 +207,49 @@ class App(ctk.CTk):
         self._all_strings[project.name] = _load_strings(project)
         save_projects(self.projects)
         self._refresh_sidebar()
+
+    # ── Add locale dialog ──────────────────────────────────────────────────
+
+    def _open_add_locale_dialog(self, project: Project) -> None:
+        dlg = AddLocaleDialog(
+            self,
+            project=project,
+            on_confirm=lambda lang, path, fmt: self._on_locale_added(project, lang, path, fmt),
+        )
+        dlg.grab_set()
+
+    def _on_locale_added(self, project: Project, lang: str, file_path: Path, fmt: str) -> None:
+        from models.project import LocaleFile
+        # Build flat dict from the default locale (or empty if no default)
+        strings = self._all_strings.get(project.name, [])
+        default_lang = project.default_language
+        flat: dict[str, str] = {}
+        for s in strings:
+            flat[s.key] = s.translations.get(default_lang, "") if default_lang else ""
+
+        # Create the new locale file on disk
+        try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            _get_parser(fmt).save(file_path, flat)
+        except Exception as exc:
+            print(f"[LocaleInterface] Could not create locale file {file_path}: {exc}")
+            return
+
+        # Register the new locale file in the project
+        new_lf = LocaleFile(language=lang, path=file_path, format=fmt)
+        project.locale_files.append(new_lf)
+
+        # Merge the new language into in-memory strings
+        for s in strings:
+            s.translations.setdefault(lang, flat.get(s.key, ""))
+
+        save_projects(self.projects)
+        self._refresh_sidebar()
+
+        # Refresh editor if this project is currently selected
+        if self.current_project and self.current_project.name == project.name and self.current_group is not None:
+            group_strings = [s for s in strings if s.group == self.current_group]
+            self.editor.show_group(group_strings, project.languages, self.current_group)
 
     # ── Add key dialog ─────────────────────────────────────────────────────
 

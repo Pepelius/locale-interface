@@ -17,8 +17,8 @@ class Toolbar(ctk.CTkFrame):
         **kwargs,
     ):
         super().__init__(
-            master, height=52, corner_radius=0,
-            fg_color=("gray90", "gray18"), **kwargs
+            master, height=54, corner_radius=0,
+            fg_color=("gray92", "gray15"), **kwargs
         )
         self.grid_propagate(False)
 
@@ -38,13 +38,21 @@ class Toolbar(ctk.CTkFrame):
 
         # ── Left: app title + breadcrumb ──────────────────────────────────
         left = ctk.CTkFrame(self, fg_color="transparent")
-        left.grid(row=0, column=0, padx=(16, 0), pady=0, sticky="ns")
+        left.grid(row=0, column=0, padx=(18, 0), pady=0, sticky="ns")
 
         ctk.CTkLabel(
             left,
             text="LocaleInterface",
             font=ctk.CTkFont(size=15, weight="bold"),
-        ).pack(side="left", padx=(0, 10))
+            text_color=("gray10", "gray95"),
+        ).pack(side="left", padx=(0, 6))
+
+        # Separator dot
+        ctk.CTkLabel(
+            left, text="·",
+            font=ctk.CTkFont(size=14),
+            text_color=("gray65", "gray45"),
+        ).pack(side="left", padx=(0, 6))
 
         ctk.CTkLabel(
             left,
@@ -55,40 +63,59 @@ class Toolbar(ctk.CTkFrame):
 
         # ── Right: action buttons ─────────────────────────────────────────
         right = ctk.CTkFrame(self, fg_color="transparent")
-        right.grid(row=0, column=2, padx=(0, 14), pady=0, sticky="ns")
+        right.grid(row=0, column=2, padx=(0, 16), pady=0, sticky="ns")
 
         self._save_btn = ctk.CTkButton(
             right,
             text="Save",
-            width=72,
+            width=76,
+            height=32,
             state="disabled",
-            fg_color=("gray78", "gray32"),
-            hover_color=("gray70", "gray38"),
+            fg_color=("gray78", "gray30"),
+            hover_color=("gray70", "gray36"),
+            text_color=("gray35", "gray60"),
             command=self._on_save,
         )
         self._save_btn.pack(side="left", padx=3)
 
+        # Thin vertical separator
+        ctk.CTkFrame(
+            right, width=1, height=22,
+            fg_color=("gray75", "gray35"),
+        ).pack(side="left", padx=8)
+
         ctk.CTkButton(
-            right, text="+ Key", width=72, command=self._on_add_key
+            right, text="+ Key", width=72, height=32,
+            command=self._on_add_key,
         ).pack(side="left", padx=3)
 
         ctk.CTkButton(
-            right, text="+ Group", width=80, command=self._on_add_group
+            right, text="+ Group", width=82, height=32,
+            command=self._on_add_group,
         ).pack(side="left", padx=3)
 
         ctk.CTkButton(
-            right, text="+ Project", width=88, command=self._on_add_project
+            right, text="+ Project", width=90, height=32,
+            command=self._on_add_project,
         ).pack(side="left", padx=3)
+
+        # Thin vertical separator
+        ctk.CTkFrame(
+            right, width=1, height=22,
+            fg_color=("gray75", "gray35"),
+        ).pack(side="left", padx=8)
 
         ctk.CTkButton(
             right,
-            text="☀/🌙",
-            width=44,
+            text="◑",
+            width=34,
+            height=32,
             fg_color="transparent",
-            hover_color=("gray80", "gray28"),
-            text_color=("gray35", "gray65"),
+            hover_color=("gray82", "gray25"),
+            text_color=("gray40", "gray65"),
+            font=ctk.CTkFont(size=15),
             command=self._on_theme_toggle,
-        ).pack(side="left", padx=(8, 0))
+        ).pack(side="left")
 
     def set_context(self, project_name: str | None, group: str | None) -> None:
         if project_name and group:
@@ -104,14 +131,16 @@ class Toolbar(ctk.CTkFrame):
         if dirty:
             self._save_btn.configure(
                 state="normal",
-                text="Save ●",
-                fg_color=("#E07B00", "#C96A00"),
-                hover_color=("#C96A00", "#B05A00"),
+                text="Save  ●",
+                fg_color=("#2563EB", "#1D4ED8"),
+                hover_color=("#1D4ED8", "#1E40AF"),
+                text_color="white",
             )
         else:
             self._save_btn.configure(
                 state="disabled",
                 text="Save",
-                fg_color=("gray78", "gray32"),
-                hover_color=("gray70", "gray38"),
+                fg_color=("gray78", "gray30"),
+                hover_color=("gray70", "gray36"),
+                text_color=("gray35", "gray60"),
             )

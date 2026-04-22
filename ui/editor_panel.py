@@ -7,10 +7,10 @@ import customtkinter as ctk
 from models.locale_string import LocaleString
 from utils.placeholder_utils import validate_consistency
 
-_KEY_COL_W = 190
-_LANG_COL_W = 240
-_ROW_H = 36
-_HEADER_H = 32
+_KEY_COL_W = 200
+_LANG_COL_W = 250
+_ROW_H = 38
+_HEADER_H = 34
 
 
 class EditorPanel(ctk.CTkFrame):
@@ -67,19 +67,11 @@ class EditorPanel(ctk.CTkFrame):
         self._lang_menu.pack(side="left")
         self._lang_menu.configure(state="disabled")
 
-        # ── Column headers (non-scrolling) ────────────────────────────────
-        self._header_frame = ctk.CTkFrame(
-            self, fg_color=("gray82", "gray22"), corner_radius=0, height=_HEADER_H,
-        )
-        self._header_frame.grid(row=1, column=0, sticky="ew", padx=12, pady=(6, 0))
-        self._header_frame.grid_propagate(False)
-
-        # ── Scrollable rows ───────────────────────────────────────────────
+        # ── Scrollable area (header + rows share the same frame) ──────────
         self._rows_frame = ctk.CTkScrollableFrame(
             self, fg_color="transparent", corner_radius=0,
         )
-        self._rows_frame.grid(row=2, column=0, sticky="nsew", padx=12, pady=(0, 8))
-        self.grid_rowconfigure(2, weight=1)
+        self._rows_frame.grid(row=1, column=0, sticky="nsew", padx=12, pady=(6, 8))
 
         self._show_empty_state()
 
@@ -144,7 +136,6 @@ class EditorPanel(ctk.CTkFrame):
         return self._languages
 
     def _rebuild_table(self) -> None:
-        self._clear_header()
         self._clear_rows()
 
         if not self._strings:
@@ -156,82 +147,95 @@ class EditorPanel(ctk.CTkFrame):
         self._build_rows(langs)
 
     def _clear_header(self) -> None:
-        for w in self._header_frame.winfo_children():
-            w.destroy()
+        pass  # header lives inside _rows_frame; cleared by _clear_rows
 
     def _clear_rows(self) -> None:
         for w in self._rows_frame.winfo_children():
             w.destroy()
 
     def _show_empty_state(self) -> None:
+        container = ctk.CTkFrame(self._rows_frame, fg_color="transparent")
+        container.pack(expand=True, pady=60)
         ctk.CTkLabel(
-            self._rows_frame,
-            text="Select a group from the sidebar to view and edit its strings.",
+            container,
+            text="←  Select a group from the sidebar",
             text_color=("gray55", "gray50"),
-            font=ctk.CTkFont(size=13),
-        ).pack(pady=60)
+            font=ctk.CTkFont(size=14),
+            justify="center",
+        ).pack()
+        ctk.CTkLabel(
+            container,
+            text="to view and edit its localization strings.",
+            text_color=("gray65", "gray45"),
+            font=ctk.CTkFont(size=12),
+        ).pack(pady=(4, 0))
 
     def _build_header(self, langs: list[str]) -> None:
-        col_configs = self._col_configs(langs)
+        header = ctk.CTkFrame(
+            self._rows_frame,
+            fg_color=("gray82", "gray22"),
+            corner_radius=5,
+            height=_HEADER_H,
+        )
+        header.pack(fill="x", pady=(0, 2))
+        header.grid_propagate(False)
+        header.grid_columnconfigure(tuple(range(1, len(langs) + 1)), weight=1)
 
         ctk.CTkLabel(
-            self._header_frame,
-            text="Key",
-            font=ctk.CTkFont(size=12, weight="bold"),
-            width=col_configs[0],
+            header,
+            text="KEY",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            width=_KEY_COL_W,
             anchor="w",
-            text_color=("gray35", "gray65"),
-        ).grid(row=0, column=0, padx=(10, 0), pady=4, sticky="w")
+            text_color=("gray45", "gray60"),
+        ).grid(row=0, column=0, padx=(12, 0), pady=5, sticky="w")
 
         for i, lang in enumerate(langs):
             ctk.CTkLabel(
-                self._header_frame,
+                header,
                 text=lang.upper(),
-                font=ctk.CTkFont(size=12, weight="bold"),
-                width=col_configs[i + 1],
+                font=ctk.CTkFont(size=11, weight="bold"),
                 anchor="w",
-                text_color=("gray35", "gray65"),
-            ).grid(row=0, column=i + 1, padx=(12, 0), pady=4, sticky="w")
+                text_color=("gray45", "gray60"),
+            ).grid(row=0, column=i + 1, padx=(12, 5), pady=5, sticky="ew")
 
     def _build_rows(self, langs: list[str]) -> None:
-        col_configs = self._col_configs(langs)
-
         for idx, string in enumerate(self._strings):
             issues = validate_consistency(string.translations)
-            row_bg = ("gray91", "gray19") if idx % 2 == 0 else "transparent"
+            row_bg = ("gray93", "gray17") if idx % 2 == 0 else ("gray96", "gray20")
 
             row_frame = ctk.CTkFrame(
                 self._rows_frame,
                 fg_color=row_bg,
-                corner_radius=4,
+                corner_radius=5,
                 height=_ROW_H,
             )
             row_frame.pack(fill="x", pady=1)
             row_frame.grid_propagate(False)
             row_frame.grid_columnconfigure(tuple(range(1, len(langs) + 1)), weight=1)
 
-            # Key label + warning dot if placeholder issues exist
+            # Key label + optional warning icon
             key_frame = ctk.CTkFrame(
                 row_frame, fg_color="transparent",
-                width=col_configs[0],
+                width=_KEY_COL_W,
             )
-            key_frame.grid(row=0, column=0, padx=(10, 0), sticky="ns")
+            key_frame.grid(row=0, column=0, padx=(12, 0), sticky="ns")
             key_frame.grid_propagate(False)
 
             ctk.CTkLabel(
                 key_frame,
                 text=string.short_key,
                 anchor="w",
-                font=ctk.CTkFont(size=13, family="Courier"),
-                text_color=("gray15", "gray85"),
-                wraplength=col_configs[0] - 10,
+                font=ctk.CTkFont(size=12, family="Courier"),
+                text_color=("gray20", "gray80"),
+                wraplength=_KEY_COL_W - 28,
             ).pack(side="left", fill="y")
 
             if issues:
                 ctk.CTkLabel(
                     key_frame, text="⚠",
                     text_color=("#E07B00", "#FFA040"),
-                    font=ctk.CTkFont(size=12),
+                    font=ctk.CTkFont(size=11),
                 ).pack(side="left", padx=2)
 
             # Translation entries
@@ -240,18 +244,19 @@ class EditorPanel(ctk.CTkFrame):
                 var = ctk.StringVar(value=value)
 
                 has_issue = lang in issues
-                entry_border = ("#E07B00", "#FFA040") if has_issue else ("gray70", "gray35")
+                entry_border = ("#F59E0B", "#D97706") if has_issue else ("gray75", "gray32")
 
                 entry = ctk.CTkEntry(
                     row_frame,
                     textvariable=var,
                     font=ctk.CTkFont(size=13),
                     border_color=entry_border,
-                    height=_ROW_H - 6,
+                    border_width=1,
+                    height=_ROW_H - 8,
+                    corner_radius=4,
                 )
-                entry.grid(row=0, column=col_i + 1, padx=(8, 4), pady=3, sticky="ew")
+                entry.grid(row=0, column=col_i + 1, padx=(8, 5), pady=4, sticky="ew")
 
-                # Capture string/lang in closure
                 var.trace_add(
                     "write",
                     lambda *_, s=string, l=lang, v=var: self._on_string_changed(s, l, v.get()),

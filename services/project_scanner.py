@@ -14,6 +14,12 @@ _EXTENSIONS = {
     ".properties": "properties",
     ".po": "po",
 }
+# These filenames are always included when found in a locale-like folder,
+# even if the stem doesn't look like a locale code.
+_COMMON_I18N_NAMES = {
+    "i18n", "translations", "messages", "strings", "locale",
+    "locales", "lang", "dictionary", "copy", "content",
+}
 _IGNORE_DIRS = {
     ".git", ".venv", "venv", "node_modules", "__pycache__",
     ".idea", "dist", "build", ".next", "target", ".cache",
@@ -63,10 +69,13 @@ def scan_for_locale_files(project_path: Path) -> list[LocaleFile]:
             stem = fpath.stem
             lang = detect_language_from_filename(stem) or parent_lang
 
-            if lang is None and not in_locale_folder:
+            # Include well-known i18n filenames even without a detectable lang code
+            is_common_name = stem.lower() in _COMMON_I18N_NAMES
+
+            if lang is None and not in_locale_folder and not is_common_name:
                 continue
             if lang is None:
-                lang = stem
+                lang = stem if not is_common_name else ""
 
             candidates.append(LocaleFile(language=lang, path=fpath, format=fmt))
             seen.add(fpath)
